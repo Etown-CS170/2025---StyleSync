@@ -235,7 +235,7 @@ require_once __DIR__ . '/inc/actions.php';
         </div>
 
         <!-- Completed results -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm mb-3">
           <div class="card-body">
             <h2 class="h6 text-uppercase text-muted mb-3">Completed results (preview & regenerate)</h2>
             <?php if (!$doneJobs): ?>
@@ -286,10 +286,104 @@ require_once __DIR__ . '/inc/actions.php';
             <?php endif; ?>
           </div>
         </div>
+
+        <!-- Img2Img Test Card (NEW) -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body">
+            <h2 class="h6 text-uppercase text-muted mb-3">Test Img2Img (Diffusers)</h2>
+            <p class="small text-muted">
+              Upload a source image and enter a prompt.
+            </p>
+
+            <form id="img2img-form" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label class="form-label">Source image</label>
+                <input type="file" name="image" class="form-control" accept="image/*" required>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Prompt</label>
+                <input type="text" name="prompt" class="form-control" placeholder="E.g., turn this into a neon poster" required>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label">Strength</label>
+                  <input type="number" name="strength" class="form-control" min="0" max="1" step="0.05" value="0.6">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Guidance scale</label>
+                  <input type="number" name="guidance_scale" class="form-control" min="1" max="20" step="0.5" value="7.5">
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-primary" onclick="runImg2Img()">
+                Generate
+              </button>
+            </form>
+
+            <p id="img2img-status" class="mt-3 text-muted"></p>
+            <img id="img2img-output" class="mt-2" style="max-width:100%; border-radius:4px; display:none;" alt="Generated result">
+          </div>
+        </div>
+        <!-- End Img2Img Test Card -->
+
       </div>
     </div>
 
     <footer class="pt-4 text-center text-muted small">Style Sync • Folder-only • PHP + Bootstrap • XAMPP</footer>
   </div>
+
+  <!-- JS for Img2Img test -->
+  <script>
+async function runImg2Img() {
+  const form = document.getElementById("img2img-form");
+  const status = document.getElementById("img2img-status");
+  const output = document.getElementById("img2img-output");
+
+  const fd = new FormData(form);
+
+  status.textContent = "Generating image...";
+  output.style.display = "none";
+
+  try {
+    const res = await fetch("api/hf_img2img.php", {
+      method: "POST",
+      body: fd
+    });
+
+    const text = await res.text();   // get raw text first
+    console.log("Raw response from hf_img2img.php:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      status.textContent = "Failed to parse response JSON. Raw response is in console.";
+      return;
+    }
+
+    if (!data.ok) {
+      status.textContent = "Error: " + (data.error || "Unknown error");
+      console.log("Error detail:", data);
+      return;
+    }
+
+    status.textContent = "Done!";
+    if (data.image_url) {
+      output.src = data.image_url + "?t=" + Date.now();
+      output.style.display = "block";
+    } else {
+      status.textContent = "No image_url returned from server.";
+      console.log("Data without image_url:", data);
+    }
+
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Request failed: " + err;
+  }
+}
+</script>
+
 </body>
 </html>
